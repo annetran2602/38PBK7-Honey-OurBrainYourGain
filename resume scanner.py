@@ -1,81 +1,55 @@
-
-import os
 import pypdf
-from pdf2image import convert_from_path
-import pytesseract
+import re
 
 
-class ResumePDFScanner:
-    """Extracts text from PDF resumes, supporting native text and OCR."""
+def extract_pdf_text(pdf_path):
+    """Extract text from every page of a PDF resume."""
 
-    @staticmethod
-    def extract_text_native(pdf_path: str) -> str:
-        """Extract text directly from searchable PDF documents."""
+    text = ""
 
-        reader = pypdf.PdfReader(pdf_path)
+    reader = pypdf.PdfReader(pdf_path)
 
-        extracted_text = ""
+    for page in reader.pages:
+        page_text = page.extract_text()
 
-        for page_num, page in enumerate(reader.pages):
-            text = page.extract_text()
+        if page_text:
+            text += page_text + "\n"
 
-            if text:
-                extracted_text += text + "\n"
-
-        return extracted_text.strip()
-
-    @staticmethod
-    def extract_text_with_ocr(pdf_path: str, dpi: int = 300) -> str:
-        """Convert PDF pages to images and extract text using OCR."""
-
-        images = convert_from_path(pdf_path, dpi=dpi)
-
-        ocr_text = ""
-
-        for page_num, image in enumerate(images):
-            text = pytesseract.image_to_string(image)
-            ocr_text += text + "\n"
-
-        return ocr_text.strip()
-
-    def scan_resume(self, pdf_path: str) -> str:
-        """Automatically use native extraction, falling back to OCR."""
-
-        if not os.path.exists(pdf_path):
-            raise FileNotFoundError(
-                f"PDF file not found at: {pdf_path}"
-            )
-
-        # Step 1: Attempt native extraction
-        native_text = self.extract_text_native(pdf_path)
-
-        # Step 2: Fall back to OCR if insufficient text
-        if len(native_text) < 50:
-            print(
-                "Notice: Low native text detected. "
-                "Switching to OCR fallback..."
-            )
-
-            return self.extract_text_with_ocr(pdf_path)
-
-        return native_text
+    return text
 
 
-# Example usage
+def clean_text(text):
+    """Clean extracted resume text."""
+
+    # Remove excessive spaces
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    # Remove excessive blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
+
+
+def scan_resume(pdf_path):
+    """Scan and clean resume."""
+
+    text = extract_pdf_text(pdf_path)
+    text = clean_text(text)
+
+    return text
+
 
 if __name__ == "__main__":
 
-    scanner = ResumePDFScanner()
+    pdf_path = input("Your resume: ")
 
-    # Ask user for a PDF path
-    target_pdf = input("Enter the path to the resume PDF: ").strip().strip('"')
+    resume_text = scan_resume(pdf_path)
 
-    try:
-        resume_text = scanner.scan_resume(target_pdf)
+    print("========== EXTRACTED RESUME ==========\n")
+    print(resume_text)
 
-        print("\n--- Successfully Extracted Resume Text ---")
-        print(resume_text)
+    # Save extracted text
+    with open("resume_extracted.txt", "w", encoding="utf-8") as file:
+        file.write(resume_text)
 
-    except Exception as e:
-        print(f"Error scanning resume: {e}")
-
+    print("\nResume extraction completed!")
