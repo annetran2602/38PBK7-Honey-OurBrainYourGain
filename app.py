@@ -8,9 +8,8 @@ from combine import (
     search_and_match_jobs
 )
 
-# ==================================
 # PAGE CONFIGURATION
-# ==================================
+
 
 st.set_page_config(
     page_title="Our Brain Your Gain",
@@ -18,9 +17,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==================================
+
 # SESSION STATE
-# ==================================
+
 
 defaults = {
     "resume_text": None,
@@ -59,7 +58,7 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-st.sidebar.caption("Powered by Python + Ollama")
+st.sidebar.caption("Powered by Python + Ollama + Adzuna")
 
 # ==================================
 # DASHBOARD
@@ -69,7 +68,7 @@ if page == "Dashboard":
 
     st.title("Dashboard")
 
-    st.write("Welcome to your AI Resume Scanner.")
+    st.write("Welcome to your AI Resume Analysis & Job Matching.")
 
     col1, col2, col3 = st.columns(3)
 
@@ -181,9 +180,7 @@ elif page == "Upload Resume":
 
                 st.error(f"Resume analysis failed: {e}")
 
-# ==================================
 # JOB SEARCH
-# ==================================
 
 elif page == "Job Search":
 
@@ -260,55 +257,40 @@ elif page == "Job Search":
 
                     st.error(f"Job search failed: {e}")
 
-# ==================================
 # JOB MATCHES
-# ==================================
 
 elif page == "Job Matches":
-
     st.title("Your Best Job Matches")
-
     st.write(
         "Jobs ranked according to your resume matching score."
     )
-
     if not st.session_state.jobs:
 
         st.info(
             "No job matches available yet. Search for jobs first."
         )
-
     else:
-
         ranked_jobs = sorted(
             st.session_state.jobs,
             key=lambda job: job["score"],
             reverse=True
         )
-
         for index, job in enumerate(
             ranked_jobs,
             start=1
         ):
-
             with st.container(border=True):
-
                 st.subheader(
                     f"#{index} {job['title']}"
                 )
-
                 st.write(f"**Company:** {job['company']}")
-
                 st.metric(
                     "Matching Score",
                     f"{job['score']:.1f}%"
                 )
-
                 st.write("**AI Assessment:**")
                 st.write(job["summary"])
-
                 st.write("**Missing Qualifications:**")
-
                 if job["missing_skills"]:
                     for skill in job["missing_skills"]:
                         st.write(f"- {skill}")

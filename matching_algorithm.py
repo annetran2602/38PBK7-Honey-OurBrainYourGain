@@ -81,10 +81,10 @@ If a category has no findings, return an empty list.
 Do not include Markdown code fences.
 """
 
-    try:
+    try: # request ollama to process the prompt
 
         response = ollama.chat(
-            model="llama3.2",
+            model="llama3.2", #model of ollama
             messages=[
                 {
                     "role": "user",
@@ -93,19 +93,19 @@ Do not include Markdown code fences.
             ],
             format="json",
             options={
-                "temperature": 0.2
+                "temperature": 0.2 # how consistent the answer is to the given prompt
             }
         )
 
-        result = json.loads(
+        result = json.loads( # Forces the model to return its response in JSON format
             response["message"]["content"]
         )
 
-        return result
+        return result #return as the parsed JSON data
 
     except json.JSONDecodeError:
         raise ValueError(
-            "Ollama returned an invalid JSON response."
+            "Ollama returned an invalid JSON response." #handle the invalid prompt
         )
 
     except Exception as e:
