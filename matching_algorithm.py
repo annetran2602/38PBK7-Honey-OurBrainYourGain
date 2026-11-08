@@ -1,202 +1,114 @@
 
-import pypdf
-import os
+import ollama
 import json
-import re
-
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-
-load_dotenv()
-
-# Initialize Gemini client
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
 
 
-# Extract resume text from PDF
-def extract_pdf_text(pdf_path):
-
-    text = ""
-
-    reader = pypdf.PdfReader(pdf_path)
-
-    for page in reader.pages:
-
-        page_text = page.extract_text()
-
-        if page_text:
-            text += page_text + "\n"
-
-    return text
-
-
-# Clean extracted resume text
-def clean_text(text):
-
-    text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-
-    return text.strip()
-
-
-# Analyze resume against job description
-def match_resume(resume_text, job_description):
+def match_resume_to_job(resume_text, job_description):
 
     prompt = f"""
-    You are an expert recruitment and resume analysis assistant.
+You are an AI recruitment assistant.
 
-    Analyze the candidate's resume against the job description.
+Your task is to compare a candidate's resume against a
+job description and evaluate how well the candidate
+matches the position.
 
-    IMPORTANT:
-    This system must work for ALL industries and occupations,
-    not just Computer Science or Data Science.
+Analyze these categories:
 
-    Evaluate these categories:
+1. Technical and transferable skills
+2. Education and academic qualifications
+3. Work experience
+4. Job responsibilities
+5. Certifications and professional qualifications
+6. Projects and achievements
 
-    1. Skills
-    2. Education
-    3. Work Experience
-    4. Responsibilities
-    5. Certifications and Qualifications
-    6. Relevant Projects and Achievements
+IMPORTANT RULES:
 
-    Instructions:
+- Evaluate the candidate based ONLY on information in the resume.
+- Never invent skills, experience, education or certifications.
+- Distinguish required qualifications from preferred qualifications.
+- A qualification not mentioned in the resume should be
+  considered unknown or missing, not automatically absent.
+- Include evidence from the resume for matching qualifications.
+- Identify transferable skills where relevant.
+- Consider all industries and job types.
+- Give a realistic match score between 0 and 100.
+- Explain why the candidate received that score.
 
-    - Dynamically identify requirements from the job description.
-    - Do not use hardcoded industry-specific skills.
-    - Identify matching and missing qualifications.
-    - Recognize transferable skills.
-    - Distinguish mandatory from preferred requirements.
-    - Do not invent experience or qualifications.
-    - Mark unavailable information as unknown.
-    - Provide evidence from the resume for each match.
-    - Consider the importance of each job requirement.
-    - Calculate a reasonable overall match score from 0 to 100.
-    - Explain the reasoning behind the score.
+RESUME:
+{resume_text}
 
-    RESUME:
-    {resume_text}
+JOB DESCRIPTION:
+{job_description}
 
-    JOB DESCRIPTION:
-    {job_description}
+Return ONLY valid JSON using this structure:
 
-    Return valid JSON with this structure:
+{{
+    "match_score": 0,
+    "overall_assessment": "Overall evaluation",
 
-    {{
-        "job_title": "",
-        "overall_match_score": 0,
-        "categories": {{
-            "skills": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }},
-            "education": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }},
-            "experience": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }},
-            "responsibilities": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }},
-            "certifications": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }},
-            "projects_and_achievements": {{
-                "score": 0,
-                "matched": [],
-                "missing": []
-            }}
-        }},
-        "transferable_skills": [],
-        "strengths": [],
-        "areas_for_improvement": [],
-        "recommendation": "",
-        "score_explanation": ""
-    }}
-    """
+    "matching_qualifications": [
+        {{
+            "requirement": "Job requirement",
+            "resume_evidence": "Evidence from resume",
+            "match": "Strong"
+        }}
+    ],
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.2
-        )
-    )
+    "missing_qualifications": [
+        {{
+            "requirement": "Job requirement",
+            "importance": "Required",
+            "reason": "Why this qualification is missing or unverified"
+        }}
+    ],
 
-    result = response.text
+    "skills_match": [
+        "Relevant skill"
+    ],
 
-    return json.loads(result)
+    "experience_analysis": "Experience comparison",
 
+    "education_analysis": "Education comparison",
 
-# Main program
-if __name__ == "__main__":
+    "recommendations": [
+        "Recommendation for the candidate"
+    ]
+}}
 
-    pdf_path = "resume.pdf"
+The match_score must be an integer between 0 and 100.
 
-    # Extract resume
-    resume_text = extract_pdf_text(pdf_path)
+If a category has no findings, return an empty list.
+Do not include Markdown code fences.
+"""
 
-    resume_text = clean_text(resume_text)
-
-    if not resume_text:
-        raise ValueError(
-            "No text found in PDF. The PDF may require OCR."
-        )
-
-    # Get job description
-    job_description = input(
-        "Paste the job description: "
-    )
-
-    if not job_description.strip():
-        raise ValueError("Job description cannot be empty.")
-
-    # Compare resume and job
     try:
 
-        results = match_resume(
-            resume_text,
-            job_description
+        response = ollama.chat(
+            model="llama3.2",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            format="json",
+            options={
+                "temperature": 0.2
+            }
         )
 
-        print("\n========== RESUME MATCH RESULTS ==========\n")
+        result = json.loads(
+            response["message"]["content"]
+        )
 
-        print(json.dumps(
-            results,
-            indent=4,
-            ensure_ascii=False
-        ))
+        return result
 
-        # Save results
-        with open(
-            "match_results.json",
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                results,
-                file,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        print("\nResults saved to match_results.json")
+    except json.JSONDecodeError:
+        raise ValueError(
+            "Ollama returned an invalid JSON response."
+        )
 
     except Exception as e:
-
-        print(f"Error analyzing resume: {e}")
+        raise RuntimeError(
+            f"Error communicating with Ollama: {e}"
+        )
