@@ -36,7 +36,7 @@ st.sidebar.caption("AI-Powered Job Matching")
 
 #navigation menu for users to switch between pages
 page = st.sidebar.radio(
-    "Navigation",
+    "---MENU---",
     [
         "Dashboard",
         "Upload Resume",
